@@ -1,0 +1,110 @@
+# Node.js with Angular
+# Build a Node.js project that uses Angular.
+# Add steps that analyze code, save build artifacts, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/javascript
+
+
+parameters:
+  - name: ENVIRONMENT
+    type: string
+    displayName: Target Environment
+  - name: TargetAppService
+    type: string
+    displayName: Target App Service
+  
+stages:
+- stage: Build_${{ parameters.Environment }}
+  displayName: Build ${{ parameters.Environment }} environment
+  jobs:
+  - job: BuildJob
+    steps:
+      - task: NodeTool@0
+        inputs:
+          versionSpec: '14.x'
+        displayName: 'Install Node.js'
+      - script: |
+          npm install -g @angular/cli
+        displayName: 'Install global angular cli'
+
+      - script: |
+          npm install
+        displayName: 'Install npm packages'
+    
+      - ${{ if eq( parameters['ENVIRONMENT'], 'dev' ) }}:    
+        - script: |
+            ng build --configuration=development
+            # echo "##vso[task.setvariable variable=task.A.status]Success"
+          displayName: 'Build Anuglar Application --configuration=development'
+
+      - ${{ elseif eq( parameters['ENVIRONMENT'], 'prod' ) }}:    
+        - script: | 
+            ng build --configuration=production
+            # echo "##vso[task.setvariable variable=task.A.status]Success"    
+          displayName: 'Build Anuglar Application --configuration=production'
+      
+      - ${{ if eq( parameters['ENVIRONMENT'], 'dev' ) }}:
+        - script: |
+            ng test --watch=false --codeCoverage=true
+          condition: succeeded()
+          displayName: 'Run Unit Tests'
+        
+      - task: PublishTestResults@2
+        #condition: and (succeededOrFailed(), eq(variables['task.A.status'], 'success'))
+        condition: succeededOrFailed()
+        inputs:
+          testResultsFormat: 'JUnit'
+          # Make sure you've changed testResultsFiles to the one below 
+          testResultsFiles: '**/TESTS-*.xml'
+        displayName: 'Publish Test Results'
+      
+      - task: PublishCodeCoverageResults@1
+        #condition: and (succeededOrFailed(), eq(variables['task.A.status'], 'success'))
+        condition: succeededOrFailed()
+        inputs:
+          codeCoverageTool: 'Cobertura'
+          summaryFileLocation: '$(Build.SourcesDirectory)/coverage/ng-azure-devops/cobertura-coverage.xml'
+        displayName: 'Publish Code Coverage Results'
+      
+      - script: |
+          ng lint
+        displayName: 'Code Analysis'
+      
+      - task: ArchiveFiles@2
+        displayName: 'Archive files'
+        inputs:
+          rootFolderOrFile: '$(System.DefaultWorkingDirectory)/dist/frontend/'
+          includeRootFolder: false
+          archiveType: zip
+          archiveFile: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip
+          replaceExistingArchive: true
+      
+      - task: PublishBuildArtifacts@1
+        inputs:
+          PathtoPublish: '$(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip'
+          ArtifactName: 'drop'
+          publishLocation: 'Container'
+
+- stage: Deploy_${{ parameters.Environment }}
+  displayName: 'Deploy Frontend to ${{ parameters.Environment }}'
+  dependsOn: Build_${{ parameters.Environment }}
+  condition: succeeded()
+  jobs:
+  - deployment: DeploymentJob
+    environment: ${{ parameters.Environment }}
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          
+          - task: DownloadPipelineArtifact@2
+            inputs:
+              artifact: 'drop'
+              path: $(Pipeline.Workspace)
+          
+          - task: AzureWebApp@1
+            displayName: Deploy Azure Web App to ${{ parameters.Environment }}
+            inputs:
+                azureSubscription: 'brokerresearch'
+                appName: ${{ parameters.TargetAppService }}
+                appType: webApp
+                package: $(Pipeline.Workspace)/$(Build.BuildId).zip

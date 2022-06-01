@@ -1,0 +1,44 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "location": {
+            "value": "eastus2"
+        },
+        "sqlAdministratorLogin": {
+            "value": "sqladminlogingoeshere"
+        },
+        "devopsOrg":{
+            "value": "Devopsorggoeshere"
+        },
+        "devopsPool": {
+            "value": "Default"
+        },
+        "keyvaultName": {
+            "value": "kvvaluegoeshere"
+        },
+        "keyvaultResourceGroupName": {
+            "value": "keyvaultrg"
+        },
+        "devopsAgentVMName": {
+            "value": "devopsAgent"
+        },
+        "devopsVMUserName": {
+            "value": "usernamegoeshere"
+        },
+        "devopsVMPasswordSecretName": {
+            "value": "passgoeshere"
+        },
+        "devopsPatSecretName":{
+            "value": "devopsPAT"
+        },
+        "devopsAgentOSSettings": {
+            "value": {
+                "imagePublisher":"MicrosoftWindowsServer",
+                "imageOffer": "WindowsServer",
+                "imageSku": "2022-datacenter-azure-edition",
+                "imageVersion": "latest"
+            }
+        }
+    }
+}

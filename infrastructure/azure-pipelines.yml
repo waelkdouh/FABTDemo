@@ -1,0 +1,36 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+- main
+
+variables:
+  vmImageName: 'windows-latest'
+  deploymentName: 'deployFromDevops_$(Build.BuildId)'
+  azureServiceConnection: 'brokerresearch'
+  resourceGroupName: 'RGNameGoesHere'
+  location: 'eastus2'
+  templateFile: 'main.bicep'
+  templateParameterFile: 'mc.parameters.json'
+
+pool:
+  vmImage: windows-latest
+
+steps:
+- task: AzurePowerShell@5
+  inputs:
+    azureSubscription: $(azureServiceConnection)
+    azurePowerShellVersion: LatestVersion
+    ScriptType: InlineScript
+    Inline: 'New-AzResourceGroupDeployment -name $(deploymentName) -ResourceGroupName $(resourceGroupName) -TemplateParameterFile $(templateParameterFile) -TemplateFile $(templateFile)'
+
+#- task: AzureCLI@2
+#  inputs:
+#   azureSubscription: $(azureServiceConnection)
+#   scriptType: bash
+#   scriptLocation: inlineScript
+#   inlineScript: |
+#     az --version
+#     az deployment group create --resource-group $(resourceGroupName) --template-file $(templateFile) --parameters @mc.parameters.json --name deployfromdevops
